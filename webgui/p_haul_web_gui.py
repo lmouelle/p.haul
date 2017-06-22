@@ -15,7 +15,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 import flask
-import os
+import subprocess
 import requests
 import socket
 
@@ -25,6 +25,9 @@ myself = "localhost"
 rpc_port = 12345
 
 APP = flask.Flask(__name__)
+
+# Import required for /procs and the pstree.js to render
+import webgui.procs
 
 
 @APP.after_request
@@ -67,29 +70,35 @@ def migrate():
     """
 
     pid = flask.request.args.get('pid')
+    htype = flask.request.args.get('htype') or webgui.procs.HAUL_TYPE_DEFAULT
 
     if not pid or not pid.isnumeric():
         return flask.jsonify({"succeeded": False, "why": "No PID specified"})
 
+    if htype not in webgui.procs.KNOWN_HAUL_TYPES:
+        return flask.jsonify({"succeeded": False,
+                              "why": "Unsupported htype {0}".format(htype)})
+
     dest_host = partner, rpc_port
+    rpc_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    rpc_socket.connect(dest_host)
 
-    connection_sks = [None, None]
+    mem_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    mem_socket.connect(dest_host)
 
-    for i in range(len(connection_sks)):
-        connection_sks[i] = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        connection_sks[i].connect(dest_host)
+    target_args = ['./p.haul'] + [str(htype), str(pid),
+                                  '--to', str(partner),
+                                  '--fdrpc', str(rpc_socket.fileno()),
+                                  '--fdmem', str(mem_socket.fileno()),
+                                  '-v', str(4),
+                                  '--shell-job']
 
-    # Organize p.haul args
-    target_args = ['./p.haul', 'pid', pid, '-v', '4', '-j']
-    target_args.extend(["--to", partner,
-                        "--fdrpc", str(connection_sks[0].fileno()),
-                        "--fdmem", str(connection_sks[1].fileno())])
+    cmd = ' '.join(target_args)
+    print("Exec p.haul: {0}".format(cmd))
+    result = subprocess.call(cmd, shell=True)
 
-    # Call p.haul
-    print("Exec p.haul: {0}".format(" ".join(target_args)))
-    os.system(" ".join(target_args))
-
-    return flask.jsonify({"succeeded": True})
+    return flask.jsonify({"succeeded": int(result) == 0,
+                          "why": "p.haul exited with code {0}".format(result)})
 
 
 def start_web_gui(migration_partner, _rpc_port, _debug=False):

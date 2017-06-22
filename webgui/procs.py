@@ -22,6 +22,9 @@ import time
 
 from webgui.p_haul_web_gui import APP
 
+KNOWN_HAUL_TYPES = {'lxc', 'pid'}
+HAUL_TYPE_DEFAULT = 'pid'
+
 
 @APP.route('/procs')
 def procs():
@@ -56,6 +59,13 @@ def procs():
                         name = os.path.basename(p.cmdline[0])
                     except Exception:
                         name = p.name
+
+                htype = HAUL_TYPE_DEFAULT
+                for container in KNOWN_HAUL_TYPES:
+                    if container in name:
+                        htype = container
+                        break
+
                 proc = {
                     # name and ppid are either functions or variables in
                     # different versions of psutil.
@@ -63,6 +73,8 @@ def procs():
                     "id": p.pid,
                     "parent": p.ppid() if callable(p.ppid) else p.ppid,
                     "children": [],
+                    "htype": htype,
+                    "is_container": htype != HAUL_TYPE_DEFAULT
                 }
 
                 if p.pid == 1:
@@ -93,6 +105,9 @@ def procs():
 
         for childProc in flatprocs:
             if "parent" in childProc and childProc["parent"] == proc["id"]:
+                if proc['is_container']:
+                    childProc['is_container'] = proc['is_container']
+                    childProc['htype'] = proc['htype']
                 proc["children"].append(childProc)
             else:
                 remainder.append(childProc)
