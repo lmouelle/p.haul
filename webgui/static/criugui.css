@@ -47,10 +47,26 @@ svg {
   stroke-width: 1px;
 }
 
+.node circle.lxc-circle {
+    fill: #009933;
+    stroke: #003300;
+}
+
+.node text.lxc-label {
+    fill: #009933;
+    font-family: "Liberation Mono", monospace;
+    text-shadow:
+      -1px -1px 0 #fff,
+      -1px 1px 0  #fff,
+       1px -1px 0 #fff,
+       1px 1px 0 #fff;
+    font-weight: bold;
+}
+
 .node text.node-label {
   fill: #333;
   font-family: "Liberation Mono", monospace;
-  font-size: 10pt;
+  font-size: 12pt;
 }
 
 .active-node text.node-label {

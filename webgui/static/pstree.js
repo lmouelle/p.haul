@@ -16,11 +16,11 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-var nodeLabelOffset = { x:6, y:3 };
+var nodeLabelOffset = { x:9, y:5 };
 var diagonal = d3.svg.diagonal().projection(function(d) { return [ d.y, d.x ]; });
 var dragging = false;
 var tree = d3.layout.tree()
-    .nodeSize([16, 200])
+    .nodeSize([18, 250])
     .children(function(d) { return d.children; })
     .sort(function(a, b) { return d3.ascending(a.name, b.name); });
 
@@ -182,11 +182,13 @@ PSTree.prototype.redraw = function(e) {
         d3.select(this).select("text.node-label").text(function(d) { return d.name; });
       });
 
-  nodeGroups.append("circle").attr({r: 3.0});
+  nodeGroups.append("circle")
+	.attr({r: 6.0})
+	.classed("lxc-circle", function(d) { return d.htype === "lxc" });
   nodeGroups.append("text")
       .attr(nodeLabelOffset)
-      .classed("node-label", true);
-
+      .classed("node-label", true)
+      .classed("lxc-label", function(d) { return d.htype === "lxc" })
   nodes
       .transition()
       .duration(200)

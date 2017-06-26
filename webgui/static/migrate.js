@@ -67,11 +67,25 @@ function _migrate(proc, source, target) {
       p.append("code").text(source.name);
 
       alert.append("br");
-      alert.append("pre").text(resp.why);
+      alert.append("pre").text("Error exit of " + resp.why);
+    } else {
+      alert.classed("alert-success", true);
+      p.append("b").text("Migration Succeded! Moved ");
+      p.append("code").text(stringifyProc(proc));
+      p.append("span");
+      p.append("span").text(" from ");
+      p.append("code").text(source.name);
+      p.append("span").text(" to ");
+      p.append("code").text(target.name);
     }
   };
+  var params = jQuery.param({
+      htype: proc.htype,
+      pid: proc.id
+  });
+  var url = source.address + "/migrate?" + params;
 
-  req.open("get", source.address + "/migrate?pid=" + proc.id, true);
+  req.open("get", url, true);
   req.send();
 }
 
