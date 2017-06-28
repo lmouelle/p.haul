@@ -60,11 +60,17 @@ def procs():
                     except Exception:
                         name = p.name
 
+                is_container = False
                 htype = HAUL_TYPE_DEFAULT
                 for container in KNOWN_HAUL_TYPES:
                     if container in name:
                         htype = container
+                        is_container = True
                         break
+
+                cname = None
+                if is_container and htype == 'lxc':
+                    cname = name.split()[-1]
 
                 proc = {
                     # name and ppid are either functions or variables in
@@ -74,7 +80,8 @@ def procs():
                     "parent": p.ppid() if callable(p.ppid) else p.ppid,
                     "children": [],
                     "htype": htype,
-                    "is_container": htype != HAUL_TYPE_DEFAULT
+                    "is_container": is_container,
+                    "cname": cname
                 }
 
                 if p.pid == 1:

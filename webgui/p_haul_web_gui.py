@@ -68,7 +68,7 @@ def migrate():
     Attempt to migrate a process, where the PID is given in the URL
     parameter "pid".
     """
-
+    cname = flask.request.args.get('cname')
     pid = flask.request.args.get('pid')
     htype = flask.request.args.get('htype') or webgui.procs.HAUL_TYPE_DEFAULT
 
@@ -86,7 +86,15 @@ def migrate():
     mem_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     mem_socket.connect(dest_host)
 
-    target_args = ['./p.haul'] + [str(htype), str(pid),
+    identifier = pid
+    if htype == 'lxc':
+        if cname:
+            identifier = cname
+        else:
+            return flask.jsonify({"succeeded": False,
+                                  "why": "No container name given for LXC"})
+
+    target_args = ['./p.haul'] + [str(htype), str(identifier),
                                   '--to', str(partner),
                                   '--fdrpc', str(rpc_socket.fileno()),
                                   '--fdmem', str(mem_socket.fileno()),

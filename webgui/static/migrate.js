@@ -81,7 +81,8 @@ function _migrate(proc, source, target) {
   };
   var params = jQuery.param({
       htype: proc.htype,
-      pid: proc.id
+      pid: proc.id,
+      cname: proc.cname
   });
   var url = source.address + "/migrate?" + params;
 
