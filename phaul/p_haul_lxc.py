@@ -7,9 +7,9 @@ import os
 import shutil
 from subprocess import PIPE
 from subprocess import Popen
+from subprocess import call
 import util
 
-import criu_cr
 import fs_haul_shared
 
 lxc_dir = "/var/lib/lxc/"
@@ -64,6 +64,16 @@ class p_haul_type(object):
 		# FIXME -- implement
 		pass
 
+	def __check_existing_ct(self):
+		"""
+		Check if given container info exists on this system already
+		Fail if so
+		"""
+		with open(os.devnull, 'w') as devnul:
+			pd = Popen(['lxc-info', '--name', self._ctname], stdout=PIPE, stderr=devnul)
+			if pd.stdout.read():
+				raise Exception('CT {0} already exists'.format(self._ctname))
+
 	def init_src(self):
 		self._fs_mounted = True
 		self._bridged = True
@@ -72,7 +82,7 @@ class p_haul_type(object):
 	def init_dst(self):
 		self._fs_mounted = False
 		self._bridged = False
-		self.__load_ct_config()
+		self.__check_existing_ct()
 
 	def set_options(self, opts):
 		pass
@@ -117,10 +127,21 @@ class p_haul_type(object):
 		shutil.copy(os.path.join(dir, "config"), self.__ct_config())
 
 	def final_dump(self, pid, img, ccon, fs):
-		criu_cr.criu_dump(self, pid, img, ccon, fs)
+		dmp_args = ['lxc-checkpoint']
+		dmp_args += ['--checkpoint-dir', img.image_dir()]
+		dmp_args += ['--name', self._ctname]
+		logging.info('\tIssuing checkpoint command to LXC')
+		dmp_res = call(' '.join(dmp_args), shell=True)
+		if dmp_res:
+			raise Exception('LXC checkpoint fail')
 
 	def migration_complete(self, fs, target_host):
-		pass
+		res = call(' '.join(['lxc-stop', '--name', self._ctname]), shell=True)
+		if res:
+			raise Exception('Failure stopping CT')
+		res = call(' '.join(['lxc-destroy', '--name', self._ctname]), shell=True)
+		if res:
+			raise Exception('Failure removing CT')
 
 	def migration_fail(self, fs):
 		pass
@@ -129,7 +150,12 @@ class p_haul_type(object):
 		pass
 
 	def final_restore(self, img, connection):
-		criu_cr.criu_restore(self, img, connection)
+		cmd = ['lxc-checkpoint']
+		cmd += ['--name='.format(self._ctname), '--restore']
+		cmd += ['--checkpoint-dir=', img.image_dir()]
+		res = call(' '.join(cmd), shell=True)
+		if res:
+			raise Exception('Error in final restore')
 
 	def prepare_ct(self, pid):
 		pass
